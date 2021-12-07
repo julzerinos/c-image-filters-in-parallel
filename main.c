@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
     int width = bi.biWidth;
     RGBTRIPLE(*image)
     [width] = calloc(height, width * sizeof(RGBTRIPLE));
+    RGBTRIPLE(*imageparalel)
+    [width] = calloc(height, width * sizeof(RGBTRIPLE));
     if (image == NULL)
     {
         fclose(inptr);
@@ -51,6 +53,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < height; i++)
     {
         fread(image[i], sizeof(RGBTRIPLE), width, inptr);
+        fread(imageparalel[i], sizeof(RGBTRIPLE), width, inptr);
         fseek(inptr, padding, SEEK_CUR);
     }
     fclose(inptr);
@@ -59,6 +62,8 @@ int main(int argc, char *argv[])
     if (kernel_dimension % 2 == 0)
         error("kernel dimension must be an odd number");
     double kernel[kernel_dimension][kernel_dimension];
+
+
 
     int is_filter_functional;
     void (*filter_function)(int *, int *, int *);
@@ -90,7 +95,31 @@ int main(int argc, char *argv[])
     double sequential_clock_time = benchmark_time(start, end);
 
     // THREADS
-    // todo
+    end, start = clock();
+
+//    for(int i=0; i<100000; ++i)
+    apply_functional_parallelly(2, height, width, imageparalel, filter_function);
+
+    end = clock();
+
+    double thread_clock_time = benchmark_time(start, end);
+
+    FILE *paraout = fopen("../parallel.bmp", "w");
+    if (paraout == NULL)
+        error("could not create/open output file");
+
+    fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, paraout);
+    fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, paraout);
+
+    for (int i = 0; i < height; i++)
+    {
+        fwrite(imageparalel[i], sizeof(RGBTRIPLE), width, paraout);
+        for (int k = 0; k < padding; k++)
+            fputc(0x00, paraout);
+    }
+
+    free(imageparalel);
+    fclose(paraout);
 
     // MPI
     // todo
@@ -99,6 +128,8 @@ int main(int argc, char *argv[])
     // todo
 
     fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (clock ticks): %f\n", sequential_clock_time);
+    fprintf(stdout, "[log] algorithm completed\n  1. thread timing (clock ticks): %f\n", thread_clock_time);
+
 
     FILE *outptr = fopen(outfile, "w");
     if (outptr == NULL)

@@ -1,6 +1,6 @@
 ## Deployment
 
-`gcc main.c filters/functional.c filters/convolution.c benchmarking/benchmark.c -o main -lm`
+`gcc main.c filters/functional.c filters/convolution.c benchmarking/benchmark.c -o main -lm -lpthread`
 
 ## Usage
 
