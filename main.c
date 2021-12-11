@@ -90,10 +90,12 @@ int main(int argc, char *argv[])
     struct timeval startSeq, endSeq;
     gettimeofday(&startSeq, 0);
 
+
     if (is_filter_functional)
         apply_functional_sequentially(height, width, image, filter_function);
     else
         apply_convolution_sequentially(height, width, image, kernel_dimension, kernel);
+
 
     gettimeofday(&endSeq, 0);
     double timeSeq = get_elapsed_time(startSeq, endSeq);
@@ -105,7 +107,12 @@ int main(int argc, char *argv[])
     struct timeval startThrd, endThrd;
     gettimeofday(&startThrd, 0);
 
-    apply_functional_parallelly(2, height, width, imageparalel, filter_function);
+
+    if (is_filter_functional)
+        apply_functional_parallelly(1, height, width, imageparalel, filter_function);
+    else
+        apply_convolution_parallelly(20, height, width, imageparalel, kernel_dimension, kernel);
+
 
     gettimeofday(&endThrd, 0);
     double timeThrd = get_elapsed_time(startThrd, endThrd);
