@@ -7,7 +7,6 @@
 
 
 #include "functional.h"
-// Implement parallel functions here
 
 void apply_functional_sequentially(int height, int width, RGBTRIPLE image[height][width], void (*filter_function)(int *, int *, int *))
 {

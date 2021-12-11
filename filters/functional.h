@@ -1,4 +1,3 @@
-
 #include "../bmp.h"
 
 
