@@ -1,10 +1,12 @@
 #include <math.h>
-#include <threads.h>
+#include <pthread.h>
 #include <assert.h>
+#include <unistd.h>
+#include <omp.h>
+#include <stdio.h>
 
 
 #include "functional.h"
-
 // Implement parallel functions here
 
 void apply_functional_sequentially(int height, int width, RGBTRIPLE image[height][width], void (*filter_function)(int *, int *, int *))
@@ -34,36 +36,18 @@ void grayscale(int *r, int *g, int *b)
     *b = grayValue;
 }
 
-struct threadParams
-{
-    int height;
-    int width;
-    RGBTRIPLE* image;
-    void (*filter_function)(int *, int *, int *);
-}ThreadParams;
 
 void apply_functional_parallelly(int thread_count, int height, int width, RGBTRIPLE image[height][width], void (*filter_function)(int *, int *, int *))
 {
-    assert(thread_count <= height);
-    int rows_for_thread = height / thread_count;
-    assert(rows_for_thread * thread_count == height); 
-
-    thrd_t threads[thread_count];
-
-
-    struct threadParams params;
-    for(int i=0, current_row=0; i<thread_count; ++i, current_row+=rows_for_thread)
+    omp_set_dynamic(0);
+    omp_set_num_threads(thread_count);
+#pragma omp parallel shared(image, height, width, filter_function) default(none)
     {
-        params.height = rows_for_thread;
-        params.width = width;
-        params.image = *image;
-        params.filter_function = filter_function;
-        thrd_create(&threads[i], ((int(*)())apply_functional_sequentially), &params); 
-    }
-
-    for(int i=0; i<thread_count; ++i)
-    {
-        thrd_join(threads[i], NULL); 
+#pragma omp for
+        for (int i = 0; i < height; i++)
+            for (int j = 0; j < width; j++)
+                apply_functional(i, j, height, width, image, filter_function);
     }
 }
+
 

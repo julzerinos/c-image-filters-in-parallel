@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <time.h>
+#include <string.h>
+#include <sys/time.h>
 
 #include "filters/convolution.h"
 #include "filters/functional.h"
@@ -37,11 +39,10 @@ int main(int argc, char *argv[])
         error("input file has incorrect format (not 24-bit bmp)");
     }
 
+
     int height = abs(bi.biHeight);
     int width = bi.biWidth;
     RGBTRIPLE(*image)
-    [width] = calloc(height, width * sizeof(RGBTRIPLE));
-    RGBTRIPLE(*imageparalel)
     [width] = calloc(height, width * sizeof(RGBTRIPLE));
     if (image == NULL)
     {
@@ -53,10 +54,14 @@ int main(int argc, char *argv[])
     for (int i = 0; i < height; i++)
     {
         fread(image[i], sizeof(RGBTRIPLE), width, inptr);
-        fread(imageparalel[i], sizeof(RGBTRIPLE), width, inptr);
         fseek(inptr, padding, SEEK_CUR);
     }
     fclose(inptr);
+
+    RGBTRIPLE(*imageparalel)
+    [width] = calloc(height, width * sizeof(RGBTRIPLE));
+    memcpy(imageparalel, image, height*width * sizeof(RGBTRIPLE));
+
 
     int kernel_dimension = 5;
     if (kernel_dimension % 2 == 0)
@@ -82,44 +87,33 @@ int main(int argc, char *argv[])
     }
 
     // SEQUENTIALLY
-
-    clock_t end, start = clock();
+    struct timeval startSeq, endSeq;
+    gettimeofday(&startSeq, 0);
 
     if (is_filter_functional)
         apply_functional_sequentially(height, width, image, filter_function);
     else
         apply_convolution_sequentially(height, width, image, kernel_dimension, kernel);
 
-    end = clock();
+    gettimeofday(&endSeq, 0);
+    double timeSeq = get_elapsed_time(startSeq, endSeq);
 
-    double sequential_clock_time = benchmark_time(start, end);
+
+
 
     // THREADS
-    end, start = clock();
+    struct timeval startThrd, endThrd;
+    gettimeofday(&startThrd, 0);
 
-//    for(int i=0; i<100000; ++i)
     apply_functional_parallelly(2, height, width, imageparalel, filter_function);
 
-    end = clock();
+    gettimeofday(&endThrd, 0);
+    double timeThrd = get_elapsed_time(startThrd, endThrd);
 
-    double thread_clock_time = benchmark_time(start, end);
 
-    FILE *paraout = fopen("../parallel.bmp", "w");
-    if (paraout == NULL)
-        error("could not create/open output file");
 
-    fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, paraout);
-    fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, paraout);
 
-    for (int i = 0; i < height; i++)
-    {
-        fwrite(imageparalel[i], sizeof(RGBTRIPLE), width, paraout);
-        for (int k = 0; k < padding; k++)
-            fputc(0x00, paraout);
-    }
 
-    free(imageparalel);
-    fclose(paraout);
 
     // MPI
     // todo
@@ -127,8 +121,10 @@ int main(int argc, char *argv[])
     // CUDA
     // todo
 
-    fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (clock ticks): %f\n", sequential_clock_time);
-    fprintf(stdout, "[log] algorithm completed\n  1. thread timing (clock ticks): %f\n", thread_clock_time);
+
+
+    fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (micro seconds): %.3f\n", timeSeq*1000);
+    fprintf(stdout, "[log] algorithm completed\n  1. thread timing (micro seconds): %.3f\n", timeThrd*1000);
 
 
     FILE *outptr = fopen(outfile, "w");
@@ -147,6 +143,24 @@ int main(int argc, char *argv[])
 
     free(image);
     fclose(outptr);
+
+
+    FILE *paraout = fopen("../parallel.bmp", "w");
+    if (paraout == NULL)
+        error("could not create/open output file");
+
+    fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, paraout);
+    fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, paraout);
+
+    for (int i = 0; i < height; i++)
+    {
+        fwrite(imageparalel[i], sizeof(RGBTRIPLE), width, paraout);
+        for (int k = 0; k < padding; k++)
+            fputc(0x00, paraout);
+    }
+
+    free(imageparalel);
+    fclose(paraout);
 
     return 0;
 }
