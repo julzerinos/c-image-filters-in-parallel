@@ -26,6 +26,20 @@ void create_blur_kernel(int dimension, double kernel[dimension][dimension])
             kernel[x][y] /= sum;
 }
 
+void create_edge_detection_kernel(int dimension, double kernel[dimension][dimension])
+{
+ kernel[0][0] = 0;
+ kernel[0][1] = 1;
+ kernel[0][2] = 0;
+ kernel[1][0] = 1;
+ kernel[1][1] = -4;
+ kernel[1][2] = 1;
+ kernel[2][0] = 0;
+ kernel[2][1] = 1;
+ kernel[2][2] = 0;
+}
+
+
 void apply_convolution_sequentially(int height, int width, RGBTRIPLE image[height][width], int kernel_dimension, double kernel[kernel_dimension][kernel_dimension])
 {
     RGBTRIPLE temp_img[height][width];
@@ -93,4 +107,34 @@ void apply_convolution_parallelly(int thread_count, int height, int width, RGBTR
             }
         }
     }
+}
+
+
+void edge_detection_parallelly(int thread_count, int height, int width, RGBTRIPLE image[height][width], int kernel_dimension, double kernel[kernel_dimension][kernel_dimension])
+{
+    create_blur_kernel(kernel_dimension, kernel);
+    apply_convolution_parallelly(thread_count, height, width, image, kernel_dimension, kernel);
+    create_edge_detection_kernel(kernel_dimension, kernel);
+    apply_convolution_parallelly(thread_count, height, width, image, kernel_dimension, kernel);
+}
+
+
+void edge_detection_sequentially(int height, int width, RGBTRIPLE image[height][width], int kernel_dimension, double kernel[kernel_dimension][kernel_dimension])
+{
+    create_blur_kernel(kernel_dimension, kernel);
+    apply_convolution_sequentially(height, width, image, kernel_dimension, kernel);
+    create_edge_detection_kernel(kernel_dimension, kernel);
+    apply_convolution_sequentially(height, width, image, kernel_dimension, kernel);
+}
+
+void blur_sequentially(int height, int width, RGBTRIPLE image[height][width], int kernel_dimension, double kernel[kernel_dimension][kernel_dimension])
+{
+    create_blur_kernel(kernel_dimension, kernel);
+    apply_convolution_sequentially(height, width, image, kernel_dimension, kernel);
+}
+
+void blur_parallelly(int thread_count, int height, int width, RGBTRIPLE image[height][width], int kernel_dimension, double kernel[kernel_dimension][kernel_dimension])
+{
+    create_blur_kernel(kernel_dimension, kernel);
+    apply_convolution_parallelly(thread_count, height, width, image, kernel_dimension, kernel);
 }

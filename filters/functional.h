@@ -9,4 +9,6 @@ int apply_functional(int x, int y, int height, int width, RGBTRIPLE image[height
 
 void grayscale(int *r, int *g, int *b);
 
-void castingFunction(void* arg);
+void inversion(int *r, int *g, int *b);
+
+

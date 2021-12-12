@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
 #include <unistd.h>
@@ -35,6 +36,12 @@ void grayscale(int *r, int *g, int *b)
     *b = grayValue;
 }
 
+void inversion(int *r, int *g, int *b)
+{
+    *r = abs(255 - *r);
+    *g = abs(255 - *g);
+    *b = abs(255 - *b);
+}
 
 void apply_functional_parallelly(int thread_count, int height, int width, RGBTRIPLE image[height][width], void (*filter_function)(int *, int *, int *))
 {
@@ -48,5 +55,4 @@ void apply_functional_parallelly(int thread_count, int height, int width, RGBTRI
                 apply_functional(i, j, height, width, image, filter_function);
     }
 }
-
 

@@ -18,9 +18,13 @@ void error(char *message)
 
 int main(int argc, char *argv[])
 {
-    char filter = getopt(argc, argv, "gb");
-    if (filter == '?')
-        error("no filter detected in options");
+    char filterType = getopt(argc, argv, "cf");
+    if (filterType == '?')
+        error("no filterType detected in options");
+
+    char filterNo = getopt(argc, argv, "01");
+    if (filterNo == '?')
+        error("no filterNo detected in options");
 
     char *infile = argv[optind];
     char *outfile = argv[optind + 1];
@@ -63,7 +67,7 @@ int main(int argc, char *argv[])
     memcpy(imageparalel, image, height*width * sizeof(RGBTRIPLE));
 
 
-    int kernel_dimension = 5;
+    int kernel_dimension = 3;
     if (kernel_dimension % 2 == 0)
         error("kernel dimension must be an odd number");
     double kernel[kernel_dimension][kernel_dimension];
@@ -73,15 +77,34 @@ int main(int argc, char *argv[])
     int is_filter_functional;
     void (*filter_function)(int *, int *, int *);
 
-    switch (filter)
+    void (*apply_convolutional_sequentially)();
+    void (*apply_convolutional_parallelly)();
+
+    switch (filterType)
     {
-    case 'b':
-        create_blur_kernel(kernel_dimension, kernel);
+    case 'c':
+        switch (filterNo) {
+            case '0':
+                apply_convolutional_sequentially = &blur_sequentially;
+                apply_convolutional_parallelly = &blur_parallelly;
+                break;
+            case '1':
+                apply_convolutional_sequentially = &edge_detection_sequentially;
+                apply_convolutional_parallelly = &edge_detection_parallelly;
+                break;
+        }
         is_filter_functional = 0;
         break;
 
-    case 'g':
-        filter_function = &grayscale;
+    case 'f':
+        switch (filterNo) {
+            case '0':
+                filter_function = &grayscale;
+                break;
+            case '1':
+                filter_function = &inversion;
+                break;
+        }
         is_filter_functional = 1;
         break;
     }
@@ -93,8 +116,9 @@ int main(int argc, char *argv[])
 
     if (is_filter_functional)
         apply_functional_sequentially(height, width, image, filter_function);
+
     else
-        apply_convolution_sequentially(height, width, image, kernel_dimension, kernel);
+        apply_convolutional_sequentially(height, width, image, kernel_dimension, kernel);
 
 
     gettimeofday(&endSeq, 0);
@@ -111,7 +135,7 @@ int main(int argc, char *argv[])
     if (is_filter_functional)
         apply_functional_parallelly(1, height, width, imageparalel, filter_function);
     else
-        apply_convolution_parallelly(20, height, width, imageparalel, kernel_dimension, kernel);
+        apply_convolutional_parallelly(20, height, width, imageparalel, kernel_dimension, kernel);
 
 
     gettimeofday(&endThrd, 0);

@@ -1,10 +1,14 @@
 ## Deployment
 
-`gcc main.c filters/functional.c filters/convolution.c benchmarking/benchmark.c -o main -lm -lpthread`
+`gcc main.c filters/functional.c filters/convolution.c benchmarking/benchmark.c -o main -lm -fopenmp`
 
 ## Usage
 
-`./main -[g|b] input_bmp output_bmp`
+`./main -[c|f] -[0|1] input_bmp output_bmp`
 
- * g - grayscale (functional)
- * b - blur (convolution/kernel)
+ * f - functional filters 
+   * 0 - grayscale
+   * 1 - inversion
+ * c - convolutional/kernel filters
+   * 0 - blur
+   * 1 - edge detection

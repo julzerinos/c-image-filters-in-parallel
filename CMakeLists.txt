@@ -11,4 +11,4 @@ include_directories(.)
 add_executable(c-image-filters-in-parallel main.c
         benchmarking/benchmark.c
         filters/convolution.c
-        filters/functional.c cawd.c)
+        filters/functional.c)
