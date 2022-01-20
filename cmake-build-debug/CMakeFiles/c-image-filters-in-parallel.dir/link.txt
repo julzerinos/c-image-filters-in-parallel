@@ -1,0 +1,1 @@
+/usr/sbin/cc  -lm -fopenmp -lmpi -g CMakeFiles/c-image-filters-in-parallel.dir/main.c.o CMakeFiles/c-image-filters-in-parallel.dir/benchmarking/benchmark.c.o CMakeFiles/c-image-filters-in-parallel.dir/filters/convolution.c.o CMakeFiles/c-image-filters-in-parallel.dir/filters/functional.c.o -o c-image-filters-in-parallel 

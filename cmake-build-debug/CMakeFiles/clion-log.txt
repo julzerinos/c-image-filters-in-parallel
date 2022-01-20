@@ -1,0 +1,4 @@
+C:\Windows\system32\wsl.exe --distribution Arch --exec /bin/bash -c "export CLION_IDE=TRUE && export JETBRAINS_IDE=TRUE && cd /home/kszmmnn/porr/c-image-filters-in-parallel/cmake-build-debug && /usr/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G 'CodeBlocks - Unix Makefiles' /home/kszmmnn/porr/c-image-filters-in-parallel"
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/kszmmnn/porr/c-image-filters-in-parallel/cmake-build-debug

@@ -1,0 +1,3 @@
+/home/kszmmnn/porr/c-image-filters-in-parallel/cmake-build-debug/CMakeFiles/c-image-filters-in-parallel.dir
+/home/kszmmnn/porr/c-image-filters-in-parallel/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/kszmmnn/porr/c-image-filters-in-parallel/cmake-build-debug/CMakeFiles/rebuild_cache.dir
