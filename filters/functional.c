@@ -14,6 +14,18 @@ void apply_functional_sequentially(int height, int width, RGBTRIPLE image[height
     for (int i = 0; i < height; i++)
         for (int j = 0; j < width; j++) {
             apply_functional(i, j, height, width, image, filter_function);
+            if( i == 100 && j == 100)
+                puts("paoaapkafawfapfs");
+        }
+}
+
+void apply_functional_sequentiallyMPI(int height, int width, int from, int to, RGBTRIPLE image[height][width],
+                                   void (*filter_function)(int *, int *, int *)) {
+    for (int i = from; i < to; i++)
+        for (int j = 0; j < width; j++) {
+            apply_functional(i, j, height, width, image, filter_function);
+            if( i == 100 && j == 100)
+                puts("paoaapkafawfapfs");
         }
 }
 

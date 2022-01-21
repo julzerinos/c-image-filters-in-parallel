@@ -79,6 +79,7 @@ int main(int argc, char *argv[])
 
     void (*apply_convolutional_sequentially)();
     void (*apply_convolutional_parallelly)();
+    apply_functional_sequentiallyMPI(height, width, 0, 0, NULL, filter_function);
 
     switch (filterType)
     {

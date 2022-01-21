@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <mpi.h>
+#include <unistd.h>
 
 #include "filters/convolution.h"
 #include "filters/functional.h"
@@ -154,7 +155,6 @@ int main(int argc, char *argv[]) {
 
     int iloscwatkow = 4; //todo AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     int *globaldata = NULL;
-    RGBTRIPLE(*localdata)[width] = calloc(height, width * sizeof(RGBTRIPLE));
 //    memcpy(imageparalel, image, height*width * sizeof(RGBTRIPLE));
 //    memcpy(imageparalel, image, height*width * sizeof(RGBTRIPLE));
 //    int size = 20;
@@ -184,51 +184,54 @@ int main(int argc, char *argv[]) {
     MPI_Type_commit(&rgb_triple);
 
 
-//    rgb_triple(*  )[width] = calloc(height, width * sizeof(RGBTRIPLE));
+//    mpirun -np 2 ./aaa -f -0 milla.bmp dadd.bmp
 //    mpicc -o aaa -g mainmpi.c filters/convolution.c filters/functional.c benchmarking/benchmark.c -lm -fopenmp -lmpi
 
-    int a = height * width;
-    printf("AAAA %d", a);
-    puts("A");
-int bb = 44100;
-    printf("%d, %d, %p, %p, %p", height, width, localdata, &imageparalel, &localdata);
-    printf("%d, %d, %d", imageparalel[0][0].rgbtRed, imageparalel[0][0].rgbtGreen, imageparalel[0][0].rgbtBlue);
+    int watki = 4;
+    RGBTRIPLE(*localdata)[width/watki] = calloc(height, width /watki* sizeof(RGBTRIPLE));
+    int heightPerWatek = height / watki;
+    int danePerWatek = height * width / watki;
+    RGBTRIPLE(*obrazekkoncowy)[width] = calloc(height, width * sizeof(RGBTRIPLE));
 
 
-    puts("AAAAAAAA");
 
-    MPI_Scatter(imageparalel, bb, rgb_triple, localdata,
-                bb, rgb_triple, 0, MPI_COMM_WORLD);
+    MPI_Scatter(imageparalel, danePerWatek, rgb_triple, localdata,
+                danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
 
-    for(int i =0; i < height;++i)
-        printf("%d, %d, %d \n", localdata[0][i].rgbtRed, localdata[0][i].rgbtGreen, localdata[0][i].rgbtBlue);
-//
-//    for (int i = 0; i < height; i++)
-//        for (int j = 0; j < width; j++) {
-//            apply_functional(i, j, height, width, image, filter_function);
-//        }
+        for(int i=0; i<=0; ++i){
+            for(int j=0; j<4; ++j){
+                printf(" %d,%d,%d |",  localdata[i][j].rgbtRed,  localdata[i][j].rgbtGreen, localdata[i][j].rgbtBlue);
+            }
+//            puts(" ");
+        }
 
-    apply_functional_sequentially(height, width, localdata, filter_function);
-    puts("AAAAAAAA");
-    puts("AAAAAAAA");
-    puts("AAAAAAAA");
 
-//    printf("Processor %d doubling the data, now has %d\n", rank, localdata);
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        printf("%d  ", rank);
+        puts("");
 
-    MPI_Gather(localdata, bb, rgb_triple, imageparalel, bb, rgb_triple, 0, MPI_COMM_WORLD);
-    puts("DDDD");
-    puts("AAADDDDAAAAA");
-//    if (rank == 0) {
-//        printf("Processor %d has data: ", rank);
-//        for (int i=0; i<size; i++)
-//            printf("%d ", globaldata[i]);
-//        printf("\n");
-//    }
-//
-//    if (rank == 0)
-//        free(globaldata);
+        apply_functional_sequentiallyMPI(height, width, 0, heightPerWatek, localdata, filter_function);
+
+        for(int i=0; i<=0; ++i){
+            for(int j=0; j<4; ++j){
+                obrazekkoncowy[heightPerWatek*rank][heightPerWatek*rank+j] = localdata[i][j];
+                printf(" %d,%d,%d |",  localdata[i][j].rgbtRed,  localdata[i][j].rgbtGreen, localdata[i][j].rgbtBlue);
+            }
+//            puts(" ");
+        }
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    printf("%d  ", rank);
+    puts("");
+        MPI_Gather(localdata, danePerWatek, rgb_triple, imageparalel, danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
 
     MPI_Finalize();
+    puts("imgpararaal;e");
+//    for(int i=0; i<=0; ++i){
+//        for(int j=0; j<4; ++j){
+//            printf(" %d,%d,%d |", imageparalel[i][j].rgbtBlue, imageparalel[i][j].rgbtGreen, imageparalel[i][j].rgbtRed);
+//        }
+//        puts(" ");
+//    }
 
 
     fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (micro seconds): %.3f\n", timeSeq * 1000);
@@ -266,6 +269,7 @@ int bb = 44100;
     }
 
     free(imageparalel);
+    free(obrazekkoncowy);
     fclose(paraout);
 
 //    MPI_Finalize();
