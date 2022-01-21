@@ -5,7 +5,6 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <mpi.h>
-#include <unistd.h>
 
 #include "filters/convolution.h"
 #include "filters/functional.h"
@@ -18,12 +17,6 @@ void error(char *message) {
 }
 
 int main(int argc, char *argv[]) {
-
-    struct stat filestat;
-    int rank, numprocs;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
 
 
     char filterType = getopt(argc, argv, "cf");
@@ -121,11 +114,6 @@ int main(int argc, char *argv[]) {
 //        apply_convolutional_sequentially(height, width, image, kernel_dimension, kernel);
 //
 
-//    int a=1,b=2,c=3;
-//
-//    filter_function(&a,&b,&c);
-//    printf("AAAAAAAAAAAAAAAAAAAasfasfABBBBBBBBrgdgdrBBBBBBBBBBB");
-//    puts("aegeg");
 
 
     gettimeofday(&endSeq, 0);
@@ -150,25 +138,12 @@ int main(int argc, char *argv[]) {
 
 
     //MPI
+
+    struct stat filestat;
+    int rank, numprocs;
+    MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
-
-    int iloscwatkow = 4; //todo AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-    int *globaldata = NULL;
-//    memcpy(imageparalel, image, height*width * sizeof(RGBTRIPLE));
-//    memcpy(imageparalel, image, height*width * sizeof(RGBTRIPLE));
-//    int size = 20;
-
-//    if (rank == 0) {
-//        globaldata = malloc(size * sizeof(int) );
-//        for (int i=0; i<size; i++)
-//            globaldata[i] = 2*i+1;
-//
-//        printf("Processor %d has data: ", rank);
-//        for (int i=0; i<size; i++)
-//            printf("%d ", globaldata[i]);
-//        printf("\n");
-//    }
 
     const int nitems = 3;
     int blocklengths[3] = {1, 1, 1};
@@ -184,95 +159,67 @@ int main(int argc, char *argv[]) {
     MPI_Type_commit(&rgb_triple);
 
 
+
 //    mpirun -np 2 ./aaa -f -0 milla.bmp dadd.bmp
 //    mpicc -o aaa -g mainmpi.c filters/convolution.c filters/functional.c benchmarking/benchmark.c -lm -fopenmp -lmpi
 
     int watki = 4;
-    RGBTRIPLE(*localdata)[width/watki] = calloc(height, width /watki* sizeof(RGBTRIPLE));
+    RGBTRIPLE(*localdata)[width] = calloc(height / watki, width * sizeof(RGBTRIPLE));
     int heightPerWatek = height / watki;
     int danePerWatek = height * width / watki;
     RGBTRIPLE(*obrazekkoncowy)[width] = calloc(height, width * sizeof(RGBTRIPLE));
 
-
-
     MPI_Scatter(imageparalel, danePerWatek, rgb_triple, localdata,
                 danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
 
-        for(int i=0; i<=0; ++i){
-            for(int j=0; j<4; ++j){
-                printf(" %d,%d,%d |",  localdata[i][j].rgbtRed,  localdata[i][j].rgbtGreen, localdata[i][j].rgbtBlue);
-            }
-//            puts(" ");
-        }
-
-
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        printf("%d  ", rank);
-        puts("");
-
-        apply_functional_sequentiallyMPI(height, width, 0, heightPerWatek, localdata, filter_function);
-
-        for(int i=0; i<=0; ++i){
-            for(int j=0; j<4; ++j){
-                obrazekkoncowy[heightPerWatek*rank][heightPerWatek*rank+j] = localdata[i][j];
-                printf(" %d,%d,%d |",  localdata[i][j].rgbtRed,  localdata[i][j].rgbtGreen, localdata[i][j].rgbtBlue);
-            }
-//            puts(" ");
-        }
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    printf("%d  ", rank);
-    puts("");
-        MPI_Gather(localdata, danePerWatek, rgb_triple, imageparalel, danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
 
+    apply_functional_sequentiallyMPI(heightPerWatek, width, 0, heightPerWatek, localdata, filter_function);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Gather(localdata, danePerWatek, rgb_triple, obrazekkoncowy, danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (micro seconds): %.3f\n", timeSeq * 1000);
+        fprintf(stdout, "[log] algorithm completed\n  1. thread timing (micro seconds): %.3f\n", timeThrd * 1000);
+
+
+        FILE *outptr = fopen(outfile, "w");
+        if (outptr == NULL)
+            error("could not create/open output file");
+
+        fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, outptr);
+        fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, outptr);
+
+        for (int i = 0; i < height; i++) {
+            fwrite(image[i], sizeof(RGBTRIPLE), width, outptr);
+            for (int k = 0; k < padding; k++)
+                fputc(0x00, outptr);
+        }
+
+        free(image);
+        fclose(outptr);
+
+
+        FILE *paraout = fopen("parallel.bmp", "w");
+
+        if (paraout == NULL)
+            error("could not create/open output file");
+
+        fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, paraout);
+        fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, paraout);
+
+        for (int i = 0; i < height; i++) {
+            fwrite(obrazekkoncowy[i], sizeof(RGBTRIPLE), width, paraout);
+            for (int k = 0; k < padding; k++)
+                fputc(0x00, paraout);
+        }
+
+        free(imageparalel);
+        free(obrazekkoncowy);
+        fclose(paraout);
+    }
     MPI_Finalize();
-    puts("imgpararaal;e");
-//    for(int i=0; i<=0; ++i){
-//        for(int j=0; j<4; ++j){
-//            printf(" %d,%d,%d |", imageparalel[i][j].rgbtBlue, imageparalel[i][j].rgbtGreen, imageparalel[i][j].rgbtRed);
-//        }
-//        puts(" ");
-//    }
-
-
-    fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (micro seconds): %.3f\n", timeSeq * 1000);
-    fprintf(stdout, "[log] algorithm completed\n  1. thread timing (micro seconds): %.3f\n", timeThrd * 1000);
-
-
-    FILE *outptr = fopen(outfile, "w");
-    if (outptr == NULL)
-        error("could not create/open output file");
-
-    fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, outptr);
-    fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, outptr);
-
-    for (int i = 0; i < height; i++) {
-        fwrite(image[i], sizeof(RGBTRIPLE), width, outptr);
-        for (int k = 0; k < padding; k++)
-            fputc(0x00, outptr);
-    }
-
-    free(image);
-    fclose(outptr);
-
-
-    FILE *paraout = fopen("parallel.bmp", "w");
-    if (paraout == NULL)
-        error("could not create/open output file");
-
-    fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, paraout);
-    fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, paraout);
-
-    for (int i = 0; i < height; i++) {
-        fwrite(imageparalel[i], sizeof(RGBTRIPLE), width, paraout);
-        for (int k = 0; k < padding; k++)
-            fputc(0x00, paraout);
-    }
-
-    free(imageparalel);
-    free(obrazekkoncowy);
-    fclose(paraout);
-
-//    MPI_Finalize();
 
     return 0;
 }
