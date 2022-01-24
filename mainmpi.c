@@ -3,10 +3,8 @@
 #include <getopt.h>
 #include <string.h>
 #include <sys/time.h>
-#include <sys/stat.h>
 #include <mpi.h>
 
-#include "filters/convolution.h"
 #include "filters/functional.h"
 #include "benchmarking/benchmark.h"
 #include "bmp.h"
@@ -52,6 +50,7 @@ int main(int argc, char *argv[]) {
         error("memory allocation for image failed");
     }
 
+
     int padding = (4 - (width * sizeof(RGBTRIPLE)) % 4) % 4;
     for (int i = 0; i < height; i++) {
         fread(image[i], sizeof(RGBTRIPLE), width, inptr);
@@ -63,33 +62,10 @@ int main(int argc, char *argv[]) {
     memcpy(imageparalel, image, height * width * sizeof(RGBTRIPLE));
 
 
-    int kernel_dimension = 3;
-    if (kernel_dimension % 2 == 0)
-        error("kernel dimension must be an odd number");
-    double kernel[kernel_dimension][kernel_dimension];
-
-
     int is_filter_functional;
     void (*filter_function)(int *, int *, int *);
 
-    void (*apply_convolutional_sequentially)();
-    void (*apply_convolutional_parallelly)();
-
     switch (filterType) {
-        case 'c':
-            switch (filterNo) {
-                case '0':
-                    apply_convolutional_sequentially = &blur_sequentially;
-                    apply_convolutional_parallelly = &blur_parallelly;
-                    break;
-                case '1':
-                    apply_convolutional_sequentially = &edge_detection_sequentially;
-                    apply_convolutional_parallelly = &edge_detection_parallelly;
-                    break;
-            }
-            is_filter_functional = 0;
-            break;
-
         case 'f':
             switch (filterNo) {
                 case '0':
@@ -101,49 +77,25 @@ int main(int argc, char *argv[]) {
             }
             is_filter_functional = 1;
             break;
+        default:
+            puts("wrong filter type parameter");
+            exit(-1);
+            break;
     }
-//    // SEQUENTIALLY
-    struct timeval startSeq, endSeq;
-    gettimeofday(&startSeq, 0);
-//
-//
-//    if (is_filter_functional)
-//        apply_functional_sequentially(height, width, image, filter_function);
-//
-//    else
-//        apply_convolutional_sequentially(height, width, image, kernel_dimension, kernel);
-//
-
-
-
-    gettimeofday(&endSeq, 0);
-    double timeSeq = get_elapsed_time(startSeq, endSeq);
-//
-//
-//
-//
-//    // THREADS
-    struct timeval startThrd, endThrd;
-//    gettimeofday(&startThrd, 0);
-//
-//
-//    if (is_filter_functional)
-//        apply_functional_parallelly(1, height, width, imageparalel, filter_function);
-//    else
-//        apply_convolutional_parallelly(20, height, width, imageparalel, kernel_dimension, kernel);
-//
-//
-    gettimeofday(&endThrd, 0);
-    double timeThrd = get_elapsed_time(startThrd, endThrd);
-
-
+    struct timeval startMpi, endMpi;
+    gettimeofday(&startMpi, 0);
     //MPI
-
-    struct stat filestat;
     int rank, numprocs;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+
+    int heightPerWatek = height / numprocs;
+
+    if(heightPerWatek * numprocs != height)
+        error("wrong image format");
+
+
 
     const int nitems = 3;
     int blocklengths[3] = {1, 1, 1};
@@ -158,16 +110,16 @@ int main(int argc, char *argv[]) {
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &rgb_triple);
     MPI_Type_commit(&rgb_triple);
 
+    RGBTRIPLE(*localdata)[width] = calloc(height / numprocs, width * sizeof(RGBTRIPLE));
+    int danePerWatek = height * width / numprocs;
+    RGBTRIPLE(*obrazekkoncowy)[width] = calloc(height, width * sizeof(RGBTRIPLE));
 
 
 //    mpirun -np 2 ./aaa -f -0 milla.bmp dadd.bmp
 //    mpicc -o aaa -g mainmpi.c filters/convolution.c filters/functional.c benchmarking/benchmark.c -lm -fopenmp -lmpi
 
-    int watki = 4;
-    RGBTRIPLE(*localdata)[width] = calloc(height / watki, width * sizeof(RGBTRIPLE));
-    int heightPerWatek = height / watki;
-    int danePerWatek = height * width / watki;
-    RGBTRIPLE(*obrazekkoncowy)[width] = calloc(height, width * sizeof(RGBTRIPLE));
+
+
 
     MPI_Scatter(imageparalel, danePerWatek, rgb_triple, localdata,
                 danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
@@ -176,13 +128,17 @@ int main(int argc, char *argv[]) {
 
     apply_functional_sequentiallyMPI(heightPerWatek, width, 0, heightPerWatek, localdata, filter_function);
 
-    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Gather(localdata, danePerWatek, rgb_triple, obrazekkoncowy, danePerWatek, rgb_triple, 0, MPI_COMM_WORLD);
 
-    if (rank == 0) {
-        fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (micro seconds): %.3f\n", timeSeq * 1000);
-        fprintf(stdout, "[log] algorithm completed\n  1. thread timing (micro seconds): %.3f\n", timeThrd * 1000);
 
+
+
+    gettimeofday(&endMpi, 0);
+    double timeMpi = get_elapsed_time(startMpi, endMpi);
+
+
+    if (rank == 0) {
+        fprintf(stdout, "[log] algorithm completed\n  1. sequential timing (micro seconds): %.3f\n", timeMpi * 1000);
 
         FILE *outptr = fopen(outfile, "w");
         if (outptr == NULL)
